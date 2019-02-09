@@ -1,4 +1,5 @@
 import os
+import math
 import time
 import random
 import datetime
@@ -7,7 +8,8 @@ import redis
 import dotenv
 
 import anki_vector
-from anki_vector.util import distance_mm, speed_mmps, degrees
+from anki_vector.util import distance_mm, speed_mmps, degrees, radians
+from anki_vector.objects import CustomObjectMarkers, CustomObjectTypes
 
 
 #######################
@@ -152,9 +154,62 @@ def ask_for_tolerance(robot):
     return touch_count % 3 + 1
 
 
+def give_shot():
+    with anki_vector.Robot(enable_custom_object_detection=True) as robot:
+        robot.world.define_custom_cube(
+            custom_object_type=CustomObjectTypes.CustomType00,
+            marker=CustomObjectMarkers.Circles2,
+            size_mm=20.0,
+            marker_width_mm=50.0,
+            marker_height_mm=50.0,
+            is_unique=True
+        )
+        robot.motors.set_head_motor(0)
+        robot.anim.play_animation('anim_referencing_squint_01')
+        robot.anim.play_animation('anim_eyecontact_squint_01')
+        robot.motors.set_lift_motor(0)
+
+        for obj in robot.world.visible_custom_objects:
+            new_pose = robot.pose.define_pose_relative_this(obj.pose)
+            print(new_pose)
+            x = new_pose.position.x
+            y = new_pose.position.y
+            z = new_pose.position.z
+            ang = new_pose.rotation.angle_z
+            a = x - (y / math.tan(ang.radians))
+
+            speed = 80
+
+            robot.behavior.drive_straight(distance_mm(x - 30),
+                                          speed_mmps(speed))
+            robot.behavior.turn_in_place(radians(math.pi / 3))
+            robot.behavior.drive_straight(distance_mm(y - 30),
+                                          speed_mmps(speed))
+            robot.motors.set_lift_motor(2)
+            robot.behavior.drive_straight(distance_mm(-y), speed_mmps(speed))
+
+            # robot.behavior.drive_straight(distance_mm(y / math.sin(angle_z.radians)), speed_mmps(speed))
+            # else:
+            #     robot.behavior.turn_in_place(radians(math.pi / 2))
+            #     robot.behavior.drive_straight(distance_mm(y - (x / math.tan(angle_z.radians))), speed_mmps(speed))
+            #     robot.behavior.turn_in_place(radians(-angle_z.radians))
+            #     robot.behavior.drive_straight(distance_mm(x / math.sin(angle_z.radians)), speed_mmps(speed))
+            #     robot.motors.set_lift_motor(3)
+            # robot.behavior.drive_straight(distance_mm(-x + a), speed_mmps(100))
+            # robot.behavior.drive_straight(distance_mm(-y), speed_mmps(100))
+            # robot.behavior.turn_in_place(radians(-angle_z.radians))
+
+            # divisions = 5
+            # for i in range(divisions):
+            #     robot.behavior.drive_straight(distance_mm(x/5), speed_mmps(80))
+            #     robot.behavior.turn_in_place(radians(math.pi / 2))
+            #     robot.behavior.drive_straight(distance_mm(y/5), speed_mmps(80))
+            #     robot.behavior.turn_in_place(radians(-math.pi / 2))
+
+
 def hand_out_shot(robot, name):
     robot.say_text('Hey ' + name + ' let\'s take a shot!')
-    # get_shot()
+    give_shot()
     robot.say_text('Shot, shot, shot shot, shahshot, shot, shot shot, shahshot')
 
 
